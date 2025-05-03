@@ -2,20 +2,18 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy solution and project files
-COPY GitAction/GitAction.sln ./GitAction.sln
+ARG CONFIGURATION=Release
+
+COPY GitAction/GitAction.sln ./
 COPY GitAction/WebApplication1/WebApplication1.csproj ./WebApplication1/
 COPY GitAction/TestProject1/TestProject1.csproj ./TestProject1/
 
-# Restore dependencies
 RUN dotnet restore ./GitAction.sln
 
-# Copy everything else
 COPY GitAction/. ./
 
-# Build and publish
 WORKDIR /src/WebApplication1
-RUN dotnet publish -c Release -o /app/publish
+RUN dotnet publish -c $CONFIGURATION -o /app/publish --no-restore
 
 # Final image
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final

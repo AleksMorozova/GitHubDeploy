@@ -2,11 +2,9 @@ name: .NET Core Desktop CI + Docker
 
 on:
   push:
-    branches:
-      - "main"
+    branches: [ "main" ]
   pull_request:
-    branches:
-      - "main"
+    branches: [ "main" ]
 
 jobs:
   build:
@@ -14,7 +12,7 @@ jobs:
       matrix:
         configuration: [Debug, Release]
 
-    runs-on: ubuntu-latest  # Use Linux runner to work with Docker
+    runs-on: ubuntu-latest
 
     env:
       Solution_Name: GitAction/GitAction.sln
@@ -22,7 +20,7 @@ jobs:
       Wap_Project_Path: GitAction/WebApplication1/WebApplication1.csproj
       Docker_Image_Name: webapp-test:${{ matrix.configuration }}
       Docker_Registry: ghcr.io
-      Docker_Repository: aleksmorozova/githubdeploy  # Lowercase name here
+      Docker_Repository: aleksmorozova/githubdeploy
       Base64_Encoded_Pfx: ${{ secrets.Base64_Encoded_Pfx }}
 
     steps:
@@ -37,20 +35,21 @@ jobs:
         dotnet-version: 8.0.x
 
     - name: Restore NuGet packages
-      run: dotnet restore GitAction/GitAction.sln
+      run: dotnet restore ${{ env.Solution_Name }}
 
     - name: Build solution
-      run: dotnet build GitAction/GitAction.sln --configuration ${{ matrix.configuration }}
+      run: dotnet build ${{ env.Solution_Name }} --configuration ${{ matrix.configuration }}
 
     - name: Run unit tests
-      run: dotnet test GitAction/TestProject1/TestProject1.csproj --configuration ${{ matrix.configuration }}
+      run: dotnet test ${{ env.Test_Project_Path }} --configuration ${{ matrix.configuration }}
 
-    # Docker: Build image (set context to the root folder of the repo)
     - name: Docker Build (.NET Web App)
-      working-directory: ./  # Set working directory to the root folder of the repo (GitHubDeploy)
-      run: docker build -t ghcr.io/aleksmorozova/githubdeploy/webapp-test:${{ matrix.configuration }} -f GitAction/Dockerfile .
+      run: |
+        docker build \
+          --build-arg CONFIGURATION=${{ matrix.configuration }} \
+          -t ghcr.io/${{ env.Docker_Repository }}/webapp-test:${{ matrix.configuration }} \
+          -f GitAction/Dockerfile .
 
-    # Docker: Authenticate to GitHub Container Registry
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v2
       with:
@@ -58,19 +57,17 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    # Docker: Push the image to GitHub Container Registry
     - name: Push Docker image to GitHub Container Registry
-      run: |
-        docker push ghcr.io/aleksmorozova/githubdeploy/webapp-test:${{ matrix.configuration }}
+      run: docker push ghcr.io/${{ env.Docker_Repository }}/webapp-test:${{ matrix.configuration }}
 
-    # Docker: Run container for verification (optional)
-    - name: Docker Run container
+    - name: Docker Run container (for verification)
       run: |
-        docker run -d -p 8080:80 --name temp-runner ghcr.io/aleksmorozova/githubdeploy/webapp-test:${{ matrix.configuration }}
+        docker run -d -p 8080:80 --name temp-runner ghcr.io/${{ env.Docker_Repository }}/webapp-test:${{ matrix.configuration }}
+        sleep 10
+        docker logs temp-runner || echo "No logs yet"
         docker ps
 
-    # Docker Cleanup
     - name: Docker Cleanup (remove temp container)
       run: |
-        docker stop temp-runner
-        docker rm temp-runner
+        docker stop temp-runner || true
+        docker rm temp-runner || true
