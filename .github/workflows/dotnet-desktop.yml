@@ -1,12 +1,10 @@
-name: .NET Core Desktop CI + Docker
+name: .NET Core CI + Docker
 
 on:
   push:
-    branches:
-      - "main"
+    branches: [ "main" ]
   pull_request:
-    branches:
-      - "main"
+    branches: [ "main" ]
 
 jobs:
   build:
@@ -14,21 +12,17 @@ jobs:
       matrix:
         configuration: [Debug, Release]
 
-    runs-on: ubuntu-latest  # Use Linux runner to work with Docker
+    runs-on: ubuntu-latest
 
     env:
-      Solution_Name: GitAction/GitAction.sln
-      Test_Project_Path: GitAction/TestProject1/TestProject1.csproj
-      Wap_Project_Directory: GitAction/WebApplication1
-      Wap_Project_Path: GitAction/WebApplication1/WebApplication1.csproj
+      Solution_Name: GitAction.sln
+      Test_Project_Path: TestProject1/TestProject1.csproj
+      Wap_Project_Path: WebApplication1/WebApplication1.csproj
       Docker_Image_Name: webapp-test:${{ matrix.configuration }}
-      Base64_Encoded_Pfx: ${{ secrets.Base64_Encoded_Pfx }}
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
 
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
@@ -36,25 +30,26 @@ jobs:
         dotnet-version: 8.0.x
 
     - name: Restore NuGet packages
+      working-directory: GitAction
       run: dotnet restore ${{ env.Solution_Name }}
 
     - name: Build solution
+      working-directory: GitAction
       run: dotnet build ${{ env.Solution_Name }} --configuration ${{ matrix.configuration }}
 
     - name: Run unit tests
+      working-directory: GitAction
       run: dotnet test ${{ env.Test_Project_Path }} --configuration ${{ matrix.configuration }}
 
-    # Docker: Build image (adjust context to root)
     - name: Docker Build (.NET Web App)
-      run: docker build -t ${{ env.Docker_Image_Name }} -f GitAction/Dockerfile ../  # Adjust context to root
+      working-directory: GitAction
+      run: docker build -t ${{ env.Docker_Image_Name }} -f Dockerfile .
 
-    # Docker: Run container for verification (optional)
     - name: Docker Run container
       run: |
         docker run -d -p 8080:80 --name temp-runner ${{ env.Docker_Image_Name }}
         docker ps
 
-    # Docker Cleanup
     - name: Docker Cleanup (remove temp container)
       run: |
         docker stop temp-runner
