@@ -19,9 +19,9 @@ jobs:
 
     env:
       Solution_Name: GitAction/GitAction.sln                         # Solution file located at the root of the repository
-      Test_Project_Path: TestProject1/TestProject1.csproj  # Adjust this path to your test project
-      Wap_Project_Directory: WebApplication1               # Adjust this path if your WAP project is inside a folder
-      Wap_Project_Path: WebApplication1/WebApplication1.csproj
+      Test_Project_Path: GitAction/TestProject1/TestProject1.csproj  # Adjust this path to your test project
+      Wap_Project_Directory: GitAction/WebApplication1               # Adjust this path if your WAP project is inside a folder
+      Wap_Project_Path: GitAction/WebApplication1/WebApplication1.csproj
       Base64_Encoded_Pfx: ${{ secrets.Base64_Encoded_Pfx }}   # Store the secret in an env variable for easier conditional use
 
     steps:
