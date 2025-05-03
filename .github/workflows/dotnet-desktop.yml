@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest  # Use Linux runner to work with Docker
 
     env:
-      Solution_Name: GitAction.sln
+      Solution_Name: GitAction/GitAction.sln  # Correct path to solution
       Test_Project_Path: GitAction/TestProject1/TestProject1.csproj
       Wap_Project_Path: GitAction/WebApplication1/WebApplication1.csproj
       Docker_Image_Name: webapp-test:${{ matrix.configuration }}
@@ -35,17 +35,17 @@ jobs:
         dotnet-version: 8.0.x
 
     - name: Restore NuGet packages
-      run: dotnet restore ${{ env.Solution_Name }}
+      run: dotnet restore GitAction/GitAction.sln  # Correct path to .sln file
 
     - name: Build solution
-      run: dotnet build ${{ env.Solution_Name }} --configuration ${{ matrix.configuration }}
+      run: dotnet build GitAction/GitAction.sln --configuration ${{ matrix.configuration }}
 
     - name: Run unit tests
-      run: dotnet test ${{ env.Test_Project_Path }} --configuration ${{ matrix.configuration }}
+      run: dotnet test GitAction/TestProject1/TestProject1.csproj --configuration ${{ matrix.configuration }}
 
     # Docker: Build image (adjust context to root)
     - name: Docker Build (.NET Web App)
-      working-directory: GitAction  # Change working directory to GitAction
+      working-directory: GitAction  # Set working directory to GitAction
       run: docker build -t ${{ env.Docker_Image_Name }} -f Dockerfile .
 
     # Docker: Run container for verification (optional)
