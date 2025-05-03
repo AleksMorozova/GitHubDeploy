@@ -10,6 +10,7 @@ on:
 
 jobs:
   build:
+    timeout-minutes: 60  # Set timeout to 60 minutes
     strategy:
       matrix:
         configuration: [Debug, Release]
@@ -69,6 +70,12 @@ jobs:
       with:
         name: MSIX Package
         path: ${{ env.Wap_Project_Directory }}\AppPackages
+
+    # 🐳 Docker: Clean up Docker environment
+    - name: Clean up Docker
+      run: |
+        docker system prune -af
+        docker volume prune -f
 
     # 🐳 Docker: Build image
     - name: Docker Build (.NET Web App)
