@@ -12,7 +12,7 @@ namespace TestProject1
             mockService.Setup(s => s.Greet("Alice")).Returns("Hello, Alice");
 
             // Act
-            var result = mockService.Object.Greet("Alice");
+            var result = mockService.Object.Greet("Alice1");
 
             // Assert
             Assert.Equal("Hello, Alice", result);
