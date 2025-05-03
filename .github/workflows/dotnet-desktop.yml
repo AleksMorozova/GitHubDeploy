@@ -21,36 +21,38 @@ jobs:
       Docker_Image_Name: webapp-test:${{ matrix.configuration }}
 
     steps:
-    - name: Checkout code
+    - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
-    - name: Setup .NET
+    - name: Setup .NET 8
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
 
     - name: Restore NuGet packages
-      working-directory: GitAction
       run: dotnet restore ${{ env.Solution_Name }}
+      working-directory: GitAction
 
     - name: Build solution
-      working-directory: GitAction
       run: dotnet build ${{ env.Solution_Name }} --configuration ${{ matrix.configuration }}
+      working-directory: GitAction
 
     - name: Run unit tests
-      working-directory: GitAction
       run: dotnet test ${{ env.Test_Project_Path }} --configuration ${{ matrix.configuration }}
+      working-directory: GitAction
 
     - name: Docker Build (.NET Web App)
+      run: docker build -t ${{ env.Docker_Image_Name }} -f Dockerfile .
       working-directory: GitAction
-      run: docker build -t ${{ env.Docker_Image_Name }} -f GitAction/Dockerfile GitAction
 
     - name: Docker Run container
       run: |
         docker run -d -p 8080:80 --name temp-runner ${{ env.Docker_Image_Name }}
         docker ps
 
-    - name: Docker Cleanup (remove temp container)
+    - name: Docker Cleanup
       run: |
         docker stop temp-runner
         docker rm temp-runner
