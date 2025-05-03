@@ -1,10 +1,12 @@
-name: .NET Core CI + Docker
+name: .NET Core Desktop CI + Docker
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - "main"
   pull_request:
-    branches: [ "main" ]
+    branches:
+      - "main"
 
 jobs:
   build:
@@ -12,47 +14,48 @@ jobs:
       matrix:
         configuration: [Debug, Release]
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # Use Linux runner to work with Docker
 
     env:
       Solution_Name: GitAction.sln
-      Test_Project_Path: TestProject1/TestProject1.csproj
-      Wap_Project_Path: WebApplication1/WebApplication1.csproj
+      Test_Project_Path: GitAction/TestProject1/TestProject1.csproj
+      Wap_Project_Path: GitAction/WebApplication1/WebApplication1.csproj
       Docker_Image_Name: webapp-test:${{ matrix.configuration }}
+      Base64_Encoded_Pfx: ${{ secrets.Base64_Encoded_Pfx }}
 
     steps:
-    - name: Checkout repository
+    - name: Checkout code
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
 
-    - name: Setup .NET 8
+    - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
 
     - name: Restore NuGet packages
       run: dotnet restore ${{ env.Solution_Name }}
-      working-directory: GitAction
 
     - name: Build solution
       run: dotnet build ${{ env.Solution_Name }} --configuration ${{ matrix.configuration }}
-      working-directory: GitAction
 
     - name: Run unit tests
       run: dotnet test ${{ env.Test_Project_Path }} --configuration ${{ matrix.configuration }}
-      working-directory: GitAction
 
+    # Docker: Build image (adjust context to root)
     - name: Docker Build (.NET Web App)
+      working-directory: GitAction  # Change working directory to GitAction
       run: docker build -t ${{ env.Docker_Image_Name }} -f Dockerfile .
-      working-directory: GitAction
 
+    # Docker: Run container for verification (optional)
     - name: Docker Run container
       run: |
         docker run -d -p 8080:80 --name temp-runner ${{ env.Docker_Image_Name }}
         docker ps
 
-    - name: Docker Cleanup
+    # Docker Cleanup
+    - name: Docker Cleanup (remove temp container)
       run: |
         docker stop temp-runner
         docker rm temp-runner
