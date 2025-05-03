@@ -14,7 +14,7 @@ jobs:
       matrix:
         configuration: [Debug, Release]
 
-    runs-on: windows-latest
+    runs-on: ubuntu-latest  # Change to Ubuntu Linux runner
 
     env:
       Solution_Name: GitAction/GitAction.sln
@@ -35,9 +35,6 @@ jobs:
       with:
         dotnet-version: 8.0.x
 
-    - name: Setup MSBuild
-      uses: microsoft/setup-msbuild@v2
-
     - name: Restore NuGet packages
       run: dotnet restore ${{ env.Solution_Name }}
 
@@ -47,47 +44,17 @@ jobs:
     - name: Run unit tests
       run: dotnet test ${{ env.Test_Project_Path }} --configuration ${{ matrix.configuration }}
 
-    # 🔧 Optional: PFX decode for MSIX
-    - name: Decode PFX certificate
-      if: ${{ env.Base64_Encoded_Pfx != '' }}
-      run: |
-        $pfx_cert_byte = [System.Convert]::FromBase64String("${{ env.Base64_Encoded_Pfx }}")
-        $certificatePath = Join-Path -Path $env:Wap_Project_Directory -ChildPath GitHubActionsWorkflow.pfx
-        [IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
-
-    - name: Create app package
-      if: ${{ env.Base64_Encoded_Pfx != '' }}
-      run: msbuild $env:Wap_Project_Path /p:Configuration=${{ matrix.configuration }} /p:UapAppxPackageBuildMode=StoreUpload /p:AppxBundle=Always /p:AppxBundlePlatforms="x86|x64" /p:PackageCertificateKeyFile=GitHubActionsWorkflow.pfx /p:PackageCertificatePassword=${{ secrets.Pfx_Key }}
-
-    - name: Remove the PFX
-      if: ${{ env.Base64_Encoded_Pfx != '' }}
-      run: Remove-Item -Path "$env:Wap_Project_Directory\GitHubActionsWorkflow.pfx"
-
-    - name: Upload package artifact
-      if: ${{ env.Base64_Encoded_Pfx != '' }}
-      uses: actions/upload-artifact@v4
-      with:
-        name: MSIX Package
-        path: ${{ env.Wap_Project_Directory }}\AppPackages
-
-    # 🐳 Docker: Build image
+    # Docker: Build image
     - name: Docker Build (.NET Web App)
       run: docker build -t ${{ env.Docker_Image_Name }} -f GitAction/Dockerfile .
 
-    # 🐳 Docker: Run container for verification (optional)
+    # Docker: Run container for verification (optional)
     - name: Docker Run container
       run: |
         docker run -d -p 8080:80 --name temp-runner ${{ env.Docker_Image_Name }}
         docker ps
 
-    # 🧹 Docker Cleanup: Container, image, volume pruning
-    - name: Clean up Docker (containers, images, volumes)
-      run: |
-        docker container prune -f
-        docker image prune -af
-        docker volume prune -f
-
-    # 🧹 Docker Cleanup: Remove temporary container
+    # Docker Cleanup
     - name: Docker Cleanup (remove temp container)
       run: |
         docker stop temp-runner
