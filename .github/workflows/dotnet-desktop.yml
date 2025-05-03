@@ -22,7 +22,7 @@ jobs:
       Wap_Project_Path: GitAction/WebApplication1/WebApplication1.csproj
       Docker_Image_Name: webapp-test:${{ matrix.configuration }}
       Docker_Registry: ghcr.io
-      Docker_Repository: ${{ github.repository }}
+      Docker_Repository: aleksmorozova/githubdeploy  # Lowercase name here
       Base64_Encoded_Pfx: ${{ secrets.Base64_Encoded_Pfx }}
 
     steps:
@@ -48,7 +48,7 @@ jobs:
     # Docker: Build image (set context to the root folder of the repo)
     - name: Docker Build (.NET Web App)
       working-directory: ./  # Set working directory to the root folder of the repo (GitHubDeploy)
-      run: docker build -t ${{ env.Docker_Registry }}/${{ env.Docker_Repository }}/webapp-test:${{ matrix.configuration }} -f GitAction/Dockerfile .
+      run: docker build -t ghcr.io/aleksmorozova/githubdeploy/webapp-test:${{ matrix.configuration }} -f GitAction/Dockerfile .
 
     # Docker: Authenticate to GitHub Container Registry
     - name: Login to GitHub Container Registry
@@ -61,12 +61,12 @@ jobs:
     # Docker: Push the image to GitHub Container Registry
     - name: Push Docker image to GitHub Container Registry
       run: |
-        docker push ${{ env.Docker_Registry }}/${{ env.Docker_Repository }}/webapp-test:${{ matrix.configuration }}
+        docker push ghcr.io/aleksmorozova/githubdeploy/webapp-test:${{ matrix.configuration }}
 
     # Docker: Run container for verification (optional)
     - name: Docker Run container
       run: |
-        docker run -d -p 8080:80 --name temp-runner ${{ env.Docker_Registry }}/${{ env.Docker_Repository }}/webapp-test:${{ matrix.configuration }}
+        docker run -d -p 8080:80 --name temp-runner ghcr.io/aleksmorozova/githubdeploy/webapp-test:${{ matrix.configuration }}
         docker ps
 
     # Docker Cleanup
