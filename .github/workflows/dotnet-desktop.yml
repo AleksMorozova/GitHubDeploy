@@ -18,7 +18,7 @@ jobs:
     runs-on: windows-latest
 
     env:
-      Solution_Name: GitAction.sln                         # Solution file located at the root of the repository
+      Solution_Name: GitAction/GitAction.sln                         # Solution file located at the root of the repository
       Test_Project_Path: TestProject1/TestProject1.csproj  # Adjust this path to your test project
       Wap_Project_Directory: WebApplication1               # Adjust this path if your WAP project is inside a folder
       Wap_Project_Path: WebApplication1/WebApplication1.csproj
