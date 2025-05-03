@@ -1,4 +1,4 @@
-name: .NET Core Desktop CI
+name: .NET Core Desktop CI + Docker
 
 on:
   push:
@@ -18,11 +18,12 @@ jobs:
     runs-on: windows-latest
 
     env:
-      Solution_Name: GitAction/GitAction.sln                         # Solution file located at the root of the repository
-      Test_Project_Path: GitAction/TestProject1/TestProject1.csproj  # Adjust this path to your test project
-      Wap_Project_Directory: GitAction/WebApplication1               # Adjust this path if your WAP project is inside a folder
+      Solution_Name: GitAction/GitAction.sln
+      Test_Project_Path: GitAction/TestProject1/TestProject1.csproj
+      Wap_Project_Directory: GitAction/WebApplication1
       Wap_Project_Path: GitAction/WebApplication1/WebApplication1.csproj
-      Base64_Encoded_Pfx: ${{ secrets.Base64_Encoded_Pfx }}   # Store the secret in an env variable for easier conditional use
+      Docker_Image_Name: webapp-test:${{ matrix.configuration }}
+      Base64_Encoded_Pfx: ${{ secrets.Base64_Encoded_Pfx }}
 
     steps:
     - name: Checkout code
@@ -39,7 +40,7 @@ jobs:
       uses: microsoft/setup-msbuild@v2
 
     - name: Restore NuGet packages
-      run: dotnet restore ${{ env.Solution_Name }}  # Path to your solution file
+      run: dotnet restore ${{ env.Solution_Name }}
 
     - name: Build solution
       run: dotnet build ${{ env.Solution_Name }} --configuration ${{ matrix.configuration }}
@@ -47,24 +48,40 @@ jobs:
     - name: Run unit tests
       run: dotnet test ${{ env.Test_Project_Path }} --configuration ${{ matrix.configuration }}
 
+    # 🔧 Optional: PFX decode for MSIX
     - name: Decode PFX certificate
-      if: ${{ env.Base64_Encoded_Pfx != '' }}  # Check if the secret is not empty
+      if: ${{ env.Base64_Encoded_Pfx != '' }}
       run: |
         $pfx_cert_byte = [System.Convert]::FromBase64String("${{ env.Base64_Encoded_Pfx }}")
         $certificatePath = Join-Path -Path $env:Wap_Project_Directory -ChildPath GitHubActionsWorkflow.pfx
         [IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
 
     - name: Create app package
-      if: ${{ env.Base64_Encoded_Pfx != '' }}  # Check if the secret is not empty
+      if: ${{ env.Base64_Encoded_Pfx != '' }}
       run: msbuild $env:Wap_Project_Path /p:Configuration=${{ matrix.configuration }} /p:UapAppxPackageBuildMode=StoreUpload /p:AppxBundle=Always /p:AppxBundlePlatforms="x86|x64" /p:PackageCertificateKeyFile=GitHubActionsWorkflow.pfx /p:PackageCertificatePassword=${{ secrets.Pfx_Key }}
 
     - name: Remove the PFX
-      if: ${{ env.Base64_Encoded_Pfx != '' }}  # Check if the secret is not empty
+      if: ${{ env.Base64_Encoded_Pfx != '' }}
       run: Remove-Item -Path "$env:Wap_Project_Directory\GitHubActionsWorkflow.pfx"
 
     - name: Upload package artifact
-      if: ${{ env.Base64_Encoded_Pfx != '' }}  # Check if the secret is not empty
+      if: ${{ env.Base64_Encoded_Pfx != '' }}
       uses: actions/upload-artifact@v4
       with:
         name: MSIX Package
         path: ${{ env.Wap_Project_Directory }}\AppPackages
+
+    # 🐳 Docker: Build image
+    - name: Docker Build (.NET Web App)
+      run: docker build -t ${{ env.Docker_Image_Name }} -f Dockerfile .
+
+    # 🐳 Docker: Run container for verification (optional)
+    - name: Docker Run container
+      run: |
+        docker run -d -p 8080:80 --name temp-runner ${{ env.Docker_Image_Name }}
+        docker ps
+
+    - name: Docker Cleanup (optional)
+      run: |
+        docker stop temp-runner
+        docker rm temp-runner
