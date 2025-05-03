@@ -17,10 +17,12 @@ jobs:
     runs-on: ubuntu-latest  # Use Linux runner to work with Docker
 
     env:
-      Solution_Name: GitAction/GitAction.sln  # Correct path to solution
+      Solution_Name: GitAction/GitAction.sln
       Test_Project_Path: GitAction/TestProject1/TestProject1.csproj
       Wap_Project_Path: GitAction/WebApplication1/WebApplication1.csproj
       Docker_Image_Name: webapp-test:${{ matrix.configuration }}
+      Docker_Registry: ghcr.io
+      Docker_Repository: ${{ github.repository }}
       Base64_Encoded_Pfx: ${{ secrets.Base64_Encoded_Pfx }}
 
     steps:
@@ -35,7 +37,7 @@ jobs:
         dotnet-version: 8.0.x
 
     - name: Restore NuGet packages
-      run: dotnet restore GitAction/GitAction.sln  # Correct path to .sln file
+      run: dotnet restore GitAction/GitAction.sln
 
     - name: Build solution
       run: dotnet build GitAction/GitAction.sln --configuration ${{ matrix.configuration }}
@@ -43,15 +45,28 @@ jobs:
     - name: Run unit tests
       run: dotnet test GitAction/TestProject1/TestProject1.csproj --configuration ${{ matrix.configuration }}
 
-    # Docker: Build image (adjust context to root)
+    # Docker: Build image (set context to the root folder of the repo)
     - name: Docker Build (.NET Web App)
-      working-directory: GitAction  # Set working directory to GitAction
-      run: docker build -t ${{ env.Docker_Image_Name }} -f Dockerfile .
+      working-directory: ./  # Set working directory to the root folder of the repo (GitHubDeploy)
+      run: docker build -t ${{ env.Docker_Registry }}/${{ env.Docker_Repository }}/webapp-test:${{ matrix.configuration }} -f GitAction/Dockerfile .
+
+    # Docker: Authenticate to GitHub Container Registry
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    # Docker: Push the image to GitHub Container Registry
+    - name: Push Docker image to GitHub Container Registry
+      run: |
+        docker push ${{ env.Docker_Registry }}/${{ env.Docker_Repository }}/webapp-test:${{ matrix.configuration }}
 
     # Docker: Run container for verification (optional)
     - name: Docker Run container
       run: |
-        docker run -d -p 8080:80 --name temp-runner ${{ env.Docker_Image_Name }}
+        docker run -d -p 8080:80 --name temp-runner ${{ env.Docker_Registry }}/${{ env.Docker_Repository }}/webapp-test:${{ matrix.configuration }}
         docker ps
 
     # Docker Cleanup
