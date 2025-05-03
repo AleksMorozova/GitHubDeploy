@@ -43,7 +43,7 @@ jobs:
 
     - name: Docker Build (.NET Web App)
       working-directory: GitAction
-      run: docker build -t ${{ env.Docker_Image_Name }} -f Dockerfile .
+      run: docker build -t ${{ env.Docker_Image_Name }} -f GitAction/Dockerfile GitAction
 
     - name: Docker Run container
       run: |
