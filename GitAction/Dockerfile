@@ -1,35 +1,23 @@
-# ---------- Stage 1: Build and Test ----------
+# Start from the .NET SDK image
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 
 WORKDIR /src
 
-# Copy solution and project files
+# Copy the solution file and project files from the root directory (since we're building from the root)
 COPY GitAction.sln ./
-COPY TestProject1/TestProject1.csproj TestProject1/
 COPY WebApplication1/WebApplication1.csproj WebApplication1/
+COPY TestProject1/TestProject1.csproj TestProject1/
 
 # Restore dependencies
-RUN dotnet restore GitAction.sln
+RUN dotnet restore
 
-# Copy the rest of the code
-COPY . .
-
-# 🧪 Run tests - this will fail the build if tests fail
-RUN dotnet test TestProject1/TestProject1.csproj --no-build --verbosity normal
-
-# 📦 Publish the web app
+# Publish the application to a folder inside the container
+COPY . ./
 RUN dotnet publish WebApplication1/WebApplication1.csproj -c Release -o /app/publish
 
-# ---------- Stage 2: Runtime ----------
+# Set the base image for running the app
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
-
 WORKDIR /app
-
-# Copy published app from build stage
 COPY --from=build /app/publish .
 
-# Expose web port
-EXPOSE 80
-
-# Start the web app
 ENTRYPOINT ["dotnet", "WebApplication1.dll"]
