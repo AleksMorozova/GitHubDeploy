@@ -14,7 +14,7 @@ jobs:
       matrix:
         configuration: [Debug, Release]
 
-    runs-on: ubuntu-latest  # Change to Ubuntu Linux runner
+    runs-on: ubuntu-latest  # Use Linux runner to work with Docker
 
     env:
       Solution_Name: GitAction/GitAction.sln
@@ -44,9 +44,9 @@ jobs:
     - name: Run unit tests
       run: dotnet test ${{ env.Test_Project_Path }} --configuration ${{ matrix.configuration }}
 
-    # Docker: Build image
+    # Docker: Build image (adjust context to root)
     - name: Docker Build (.NET Web App)
-      run: docker build -t ${{ env.Docker_Image_Name }} -f GitAction/Dockerfile .
+      run: docker build -t ${{ env.Docker_Image_Name }} -f GitAction/Dockerfile ../  # Adjust context to root
 
     # Docker: Run container for verification (optional)
     - name: Docker Run container
