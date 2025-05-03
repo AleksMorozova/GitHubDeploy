@@ -2,9 +2,13 @@ name: .NET Core Desktop CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - "main"  # This triggers the workflow when code is pushed to the 'main' branch.
   pull_request:
-    branches: [ "main" ]
+    branches:
+      - "main"  # This triggers the workflow for PRs targeting the 'main' branch.
+    paths:
+      - '**/*'  # This makes sure the workflow triggers on all files in the repository (change if needed).
 
 jobs:
   build:
@@ -44,6 +48,7 @@ jobs:
     - name: Run unit tests
       run: dotnet test ${{ env.Test_Project_Path }} --configuration ${{ matrix.configuration }}
 
+    # Conditionally run the decode PFX step only if the secret exists
     - name: Decode PFX certificate
       if: ${{ secrets.Base64_Encoded_Pfx != '' }}
       run: |
@@ -51,14 +56,17 @@ jobs:
         $certificatePath = Join-Path -Path $env:Wap_Project_Directory -ChildPath GitHubActionsWorkflow.pfx
         [IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
 
+    # Conditionally run the app package creation step
     - name: Create app package
       if: ${{ secrets.Base64_Encoded_Pfx != '' }}
       run: msbuild $env:Wap_Project_Path /p:Configuration=${{ matrix.configuration }} /p:UapAppxPackageBuildMode=StoreUpload /p:AppxBundle=Always /p:AppxBundlePlatforms="x86|x64" /p:PackageCertificateKeyFile=GitHubActionsWorkflow.pfx /p:PackageCertificatePassword=${{ secrets.Pfx_Key }}
 
+    # Conditionally run the PFX removal step
     - name: Remove the PFX
       if: ${{ secrets.Base64_Encoded_Pfx != '' }}
       run: Remove-Item -Path "$env:Wap_Project_Directory\GitHubActionsWorkflow.pfx"
 
+    # Conditionally upload the artifact only if the PFX exists
     - name: Upload package artifact
       if: ${{ secrets.Base64_Encoded_Pfx != '' }}
       uses: actions/upload-artifact@v4
