@@ -10,7 +10,6 @@ on:
 
 jobs:
   build:
-    timeout-minutes: 60  # Set timeout to 60 minutes
     strategy:
       matrix:
         configuration: [Debug, Release]
@@ -71,12 +70,6 @@ jobs:
         name: MSIX Package
         path: ${{ env.Wap_Project_Directory }}\AppPackages
 
-    # 🐳 Docker: Clean up Docker environment
-    - name: Clean up Docker
-      run: |
-        docker system prune -af
-        docker volume prune -f
-
     # 🐳 Docker: Build image
     - name: Docker Build (.NET Web App)
       run: docker build -t ${{ env.Docker_Image_Name }} -f GitAction/Dockerfile .
@@ -87,7 +80,15 @@ jobs:
         docker run -d -p 8080:80 --name temp-runner ${{ env.Docker_Image_Name }}
         docker ps
 
-    - name: Docker Cleanup (optional)
+    # 🧹 Docker Cleanup: Container, image, volume pruning
+    - name: Clean up Docker (containers, images, volumes)
+      run: |
+        docker container prune -f
+        docker image prune -af
+        docker volume prune -f
+
+    # 🧹 Docker Cleanup: Remove temporary container
+    - name: Docker Cleanup (remove temp container)
       run: |
         docker stop temp-runner
         docker rm temp-runner
