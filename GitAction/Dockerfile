@@ -2,9 +2,10 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-COPY GitAction.sln ./
-COPY TestProject1/TestProject1.csproj TestProject1/
-COPY WebApplication1/WebApplication1.csproj WebApplication1/
+# Inside GitAction/Dockerfile, use full path from GitHubDeploy root:
+COPY GitAction/WebApplication1/WebApplication1.csproj GitAction/WebApplication1/
+COPY GitAction/TestProject1/TestProject1.csproj GitAction/TestProject1/
+COPY GitAction/GitAction.sln .
 
 RUN dotnet restore
 
