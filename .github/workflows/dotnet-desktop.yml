@@ -2,11 +2,9 @@ name: .NET Core Desktop CI + Docker
 
 on:
   push:
-    branches:
-      - "main"
+    branches: ["main"]
   pull_request:
-    branches:
-      - "main"
+    branches: ["main"]
 
 jobs:
   build:
@@ -14,10 +12,10 @@ jobs:
       matrix:
         configuration: [Debug, Release]
 
-    runs-on: ubuntu-latest  # Use Linux runner to work with Docker
+    runs-on: ubuntu-latest
 
     env:
-      Solution_Name: GitAction/GitAction.sln  # Correct path to solution
+      Solution_Name: GitAction/GitAction.sln
       Test_Project_Path: GitAction/TestProject1/TestProject1.csproj
       Wap_Project_Path: GitAction/WebApplication1/WebApplication1.csproj
       Docker_Image_Name: webapp-test:${{ matrix.configuration }}
@@ -35,27 +33,23 @@ jobs:
         dotnet-version: 8.0.x
 
     - name: Restore NuGet packages
-      run: dotnet restore GitAction/GitAction.sln  # Correct path to .sln file
+      run: dotnet restore ${{ env.Solution_Name }}
 
     - name: Build solution
-      run: dotnet build GitAction/GitAction.sln --configuration ${{ matrix.configuration }}
+      run: dotnet build ${{ env.Solution_Name }} --configuration ${{ matrix.configuration }}
 
     - name: Run unit tests
-      run: dotnet test GitAction/TestProject1/TestProject1.csproj --configuration ${{ matrix.configuration }}
+      run: dotnet test ${{ env.Test_Project_Path }} --configuration ${{ matrix.configuration }}
 
-    # Docker: Build image (adjust context to root)
     - name: Docker Build (.NET Web App)
-      working-directory: GitAction  # Set working directory to GitAction
-      run: docker build -t ${{ env.Docker_Image_Name }} -f Dockerfile .
+      run: docker build -t ${{ env.Docker_Image_Name }} --file GitAction/Dockerfile GitAction
 
-    # Docker: Run container for verification (optional)
     - name: Docker Run container
       run: |
         docker run -d -p 8080:80 --name temp-runner ${{ env.Docker_Image_Name }}
         docker ps
 
-    # Docker Cleanup
-    - name: Docker Cleanup (remove temp container)
+    - name: Docker Cleanup
       run: |
         docker stop temp-runner
         docker rm temp-runner
