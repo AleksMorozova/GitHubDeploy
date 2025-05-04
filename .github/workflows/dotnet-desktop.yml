@@ -1,10 +1,12 @@
-name: .NET Core Desktop CI + Docker
+name: .NET Core CI + Docker
 
 on:
   push:
-    branches: ["main"]
+    branches:
+      - "main"
   pull_request:
-    branches: ["main"]
+    branches:
+      - "main"
 
 jobs:
   build:
@@ -19,13 +21,10 @@ jobs:
       Test_Project_Path: GitAction/TestProject1/TestProject1.csproj
       Wap_Project_Path: GitAction/WebApplication1/WebApplication1.csproj
       Docker_Image_Name: webapp-test:${{ matrix.configuration }}
-      Base64_Encoded_Pfx: ${{ secrets.Base64_Encoded_Pfx }}
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
 
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
@@ -42,14 +41,14 @@ jobs:
       run: dotnet test ${{ env.Test_Project_Path }} --configuration ${{ matrix.configuration }}
 
     - name: Docker Build (.NET Web App)
-      run: docker build -t ${{ env.Docker_Image_Name }} --file GitAction/Dockerfile GitAction
+      run: docker build -t ${{ env.Docker_Image_Name }} --file Dockerfile .
 
     - name: Docker Run container
       run: |
         docker run -d -p 8080:80 --name temp-runner ${{ env.Docker_Image_Name }}
         docker ps
 
-    - name: Docker Cleanup
+    - name: Docker Cleanup (remove temp container)
       run: |
         docker stop temp-runner
         docker rm temp-runner
