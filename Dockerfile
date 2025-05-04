@@ -1,27 +1,26 @@
-# ------------------------------------
-# Build stage
-# ------------------------------------
+# Stage 1 - Build
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-WORKDIR /src
 
-# Copy everything inside GitAction (including solution, projects, etc.)
-COPY GitAction/ ./
+WORKDIR /source
 
-# Restore and build using the solution file
-RUN dotnet restore GitAction.sln
-RUN dotnet build GitAction.sln -c Debug --no-restore
+# Copy solution and restore dependencies
+COPY GitAction/GitAction.sln ./
+COPY GitAction/WebApplication1/*.csproj ./WebApplication1/
+RUN dotnet restore ./WebApplication1/WebApplication1.csproj
 
-# Optional: Run tests
-RUN dotnet test GitAction.sln --no-build --verbosity normal
+# Copy all files and publish
+COPY GitAction/WebApplication1/. ./WebApplication1/
+WORKDIR /source/WebApplication1
+RUN dotnet publish -c Release -o /app/publish
 
-# Publish the web application project
-RUN dotnet publish WebApplication1/WebApplication1.csproj -c Debug -o /app/publish --no-build
-
-# ------------------------------------
-# Runtime stage
-# ------------------------------------
+# Stage 2 - Runtime
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+
 WORKDIR /app
-COPY --from=build /app/publish .
-EXPOSE 8080
+COPY --from=build /app/publish ./
+
+# Set environment and expose port Render uses
+ENV ASPNETCORE_URLS=http://0.0.0.0:10000
+EXPOSE 10000
+
 ENTRYPOINT ["dotnet", "WebApplication1.dll"]
